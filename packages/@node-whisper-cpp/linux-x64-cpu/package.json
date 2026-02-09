@@ -1,0 +1,30 @@
+{
+  "name": "@node-whisper-cpp/linux-x64-cpu",
+  "version": "0.0.1",
+  "description": "Prebuilt node-whisper-cpp binary for Linux x64 CPU",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "bins/",
+    "package.json"
+  ],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "libc": [
+    "glibc"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@node-whisper-cpp/mac-arm64-metal",
+  "version": "0.0.1",
+  "description": "Prebuilt node-whisper-cpp binary for macOS arm64 with Metal support",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "bins/",
+    "package.json"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "license": "MIT"
+}

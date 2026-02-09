@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# local/external cache
+.cache/
+
+# build outputs
+build/
+dist/
+artifacts/
+packages/@node-whisper-cpp/*/dist/
+packages/@node-whisper-cpp/*/bins/
+
+# test scratch artifacts
+test/.tmp/
+
+# misc
+.DS_Store
+*.log
+.llm/external
+.llm/doc
+.llm/reference

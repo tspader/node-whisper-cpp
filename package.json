@@ -1,0 +1,46 @@
+{
+  "name": "node-whisper-cpp",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "imports": {
+    "#tools/build": "./tools/build.ts"
+  },
+  "files": [
+    "dist/",
+    "packages/@node-whisper-cpp/mac-arm64-metal/",
+    "packages/@node-whisper-cpp/linux-x64-cpu/",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "bun run ./tools/build.ts system",
+    "build:mac-arm64": "bun run ./tools/build.ts all --os mac --arch arm64 --backend metal",
+    "build:linux-x64": "bun run ./tools/build.ts all --os linux --arch x64 --backend cpu",
+    "test": "bun test ./test/smoke.test.ts",
+    "clean": "bun run ./tools/clean.ts"
+  },
+  "optionalDependencies": {
+    "@node-whisper-cpp/mac-arm64-metal": "0.0.1",
+    "@node-whisper-cpp/linux-x64-cpu": "0.0.1"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.3.1"
+  },
+  "devDependencies": {
+    "@clack/prompts": "^1.0.0",
+    "@types/bun": "^1.2.21",
+    "@types/node": "^24.3.0",
+    "@types/yargs": "^17.0.35",
+    "cmake-js": "^7.3.0",
+    "typescript": "^5.9.3",
+    "yargs": "^18.0.0"
+  }
+}

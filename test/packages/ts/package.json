@@ -1,0 +1,13 @@
+{
+  "name": "smoke-ts-consumer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "node-whisper-cpp": "file:../../../.cache/store/npm/node-whisper-cpp.tgz"
+  },
+  "optionalDependencies": {
+    "@node-whisper-cpp/mac-arm64-metal": "file:../../../.cache/store/npm/@node-whisper-cpp/mac-arm64-metal.tgz",
+    "@node-whisper-cpp/linux-x64-cpu": "file:../../../.cache/store/npm/@node-whisper-cpp/linux-x64-cpu.tgz"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "refs": {
+    "node-llama-cpp": {
+      "kind": "url",
+      "name": "node-llama-cpp",
+      "uri": "git@github.com:withcatai/node-llama-cpp.git",
+      "description": ""
+    }
+  }
+}
