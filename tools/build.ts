@@ -20,7 +20,7 @@ interface RunOptions {
 type BuildTarget = {
   os: "mac" | "linux";
   arch: "arm64" | "x64";
-  backend: "metal" | "cpu";
+  backend: "metal" | "cpu" | "cuda" | "vulkan";
 };
 
 const dirs = {
@@ -173,6 +173,8 @@ namespace Addon {
     await $`mkdir -p ${dirs.store.addon(target)}`.cwd(REPO);
     await $`cmake --install ${dirs.ADDON_BUILD} --config Release --prefix ${join(dirs.store.addon(target), "bins")}`.cwd(REPO);
     materializeDylibAliases(target);
+    await $`cp ${dirs.ADDON_PACKAGE_JSON(target)} ${join(dirs.store.addon(target), "package.json")}`.cwd(REPO);
+    await $`node ${tsc} --project ${dirs.ADDON_TSCONFIG(target)} --outDir ${join(dirs.store.addon(target), "dist")}`.cwd(REPO);
   }
 
   export async function clean(options: RunOptions = {}) {
@@ -212,10 +214,6 @@ namespace Js {
 
     await $`node ${tsc} --project tsconfig.json --outDir ${join(dirs.JS_INSTALL, "dist")}`.cwd(REPO);
 
-    const defaultPlatform = "mac-arm64-metal";
-    await $`mkdir -p ${dirs.store.addon(defaultPlatform)}`.cwd(REPO);
-    await $`cp ${dirs.ADDON_PACKAGE_JSON(defaultPlatform)} ${join(dirs.store.addon(defaultPlatform), "package.json")}`.cwd(REPO);
-    await $`node ${tsc} --project ${dirs.ADDON_TSCONFIG(defaultPlatform)} --outDir ${join(dirs.store.addon(defaultPlatform), "dist")}`.cwd(REPO);
   }
 }
 

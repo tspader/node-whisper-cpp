@@ -1,0 +1,65 @@
+name: ci-linux
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  linux-build-smoke:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: x64
+            backend: cpu
+            smoke: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config git curl ca-certificates python3 unzip
+
+      - name: Install Bun
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "${HOME}/.bun/bin" >> "$GITHUB_PATH"
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build target
+        run: bun run ./tools/build.ts all --os ${{ matrix.os }} --arch ${{ matrix.arch }} --backend ${{ matrix.backend }}
+
+      - name: Smoke test
+        if: matrix.smoke
+        run: bun test ./test/smoke.test.ts
+
+      - name: Stage artifacts
+        run: |
+          TRIPLE="${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.backend }}"
+          mkdir -p "artifacts/${TRIPLE}"
+          cp ".cache/store/npm/@spader/node-whisper-cpp.tgz" "artifacts/${TRIPLE}/"
+          cp ".cache/store/npm/@spader/node-whisper-cpp-${TRIPLE}.tgz" "artifacts/${TRIPLE}/"
+          cp -R ".cache/store/addon/${TRIPLE}/bins" "artifacts/${TRIPLE}/bins"
+
+      - name: Upload artifacts
+        if: ${{ !env.ACT }}
+        uses: actions/upload-artifact@v4
+        with:
+          include-hidden-files: true
+          name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.backend }}
+          path: artifacts/${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.backend }}

@@ -1,0 +1,41 @@
+name: ci-macos
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  macos-e2e:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify arm64 runner
+        run: |
+          if [ "$(uname -m)" != "arm64" ]; then
+            echo "Expected arm64 runner, got $(uname -m)"
+            exit 1
+          fi
+
+      - name: Ensure build tools
+        run: |
+          if ! command -v cmake >/dev/null || ! command -v ninja >/dev/null || ! command -v pkg-config >/dev/null; then
+            brew install cmake ninja pkg-config
+          fi
+
+      - name: Install Bun
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "${HOME}/.bun/bin" >> "$GITHUB_PATH"
+
+      - name: Run macOS arm64 end-to-end packaging test
+        run: bun run ./tools/ci-macos-e2e.ts
