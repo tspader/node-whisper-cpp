@@ -21,3 +21,4 @@ test/.tmp/
 .llm/doc
 .llm/reference
 /.llm/ci-macos.yml
+/.llm/logs

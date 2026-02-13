@@ -46,17 +46,17 @@ jobs:
           EXPECTED_PLATFORMS="linux-x64-cpu"
           MISSING=0
           for TRIPLE in $EXPECTED_PLATFORMS; do
-            TARBALL="artifacts/${TRIPLE}/@spader/node-whisper-cpp-${TRIPLE}.tgz"
+            TARBALL="artifacts/${TRIPLE}/node-whisper-cpp-${TRIPLE}.tgz"
             if [ ! -f "$TARBALL" ]; then
               echo "Missing platform tarball: $TARBALL"
               MISSING=1
             fi
+            MAIN="artifacts/${TRIPLE}/node-whisper-cpp.tgz"
+            if [ ! -f "$MAIN" ]; then
+              echo "Missing main tarball in: $MAIN"
+              MISSING=1
+            fi
           done
-          MAIN=$(find artifacts -name "node-whisper-cpp.tgz" -not -name "node-whisper-cpp-*" | head -1)
-          if [ -z "$MAIN" ]; then
-            echo "Missing main package tarball"
-            MISSING=1
-          fi
           if [ "$MISSING" -eq 1 ]; then
             echo "Not all expected tarballs are present, aborting publish"
             exit 1
@@ -69,7 +69,7 @@ jobs:
         run: |
           for dir in artifacts/*/; do
             TRIPLE=$(basename "$dir")
-            TARBALL="artifacts/${TRIPLE}/@spader/node-whisper-cpp-${TRIPLE}.tgz"
+            TARBALL="artifacts/${TRIPLE}/node-whisper-cpp-${TRIPLE}.tgz"
             if [ -f "$TARBALL" ]; then
               echo "Publishing @spader/node-whisper-cpp-${TRIPLE}"
               npm publish "$TARBALL" --provenance --access public
