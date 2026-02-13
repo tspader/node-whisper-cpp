@@ -3,7 +3,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 
-import { spinner, intro } from "@clack/prompts";
+import { spinner, intro, outro } from "@clack/prompts";
 import { describe, expect, it } from "bun:test";
 
 import { Build } from "#tools/build";
@@ -97,12 +97,14 @@ describe("smoke", () => {
 
       const ntPath = nativeTarballPath();
       await runPhase("Ensuring tarballs", async () => {
-        if (!existsSync(jsTarballPath) || !existsSync(ntPath)) {
-          await Build.all(target);
+        const fail = (path: string) => {
+          if (!existsSync(path)) {
+            outro(`Failed to find ${path}. Build first.`)
+            process.exit(1)
+          }
         }
-
-        expect(existsSync(jsTarballPath)).toBe(true);
-        expect(existsSync(ntPath)).toBe(true);
+        fail(jsTarballPath)
+        fail(ntPath)
       });
 
       resetPackageDir(jsPackageDir);

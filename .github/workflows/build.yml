@@ -26,15 +26,17 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - triple: x64-linux-cpu-gnu
+            os: ubuntu-22.04
             backend: cpu
             smoke: true
           - triple: x64-linux-cuda-gnu
+            os: ubuntu-22.04
             backend: cuda
             cuda: "12.6.3"
             smoke: false
@@ -66,15 +68,18 @@ jobs:
         if: inputs.bump || inputs.version
         run: bun run ./tools/ci.ts version ${{ inputs.version || inputs.bump }}
 
-      - name: Build
+      - name: Build native addon
         run: bun run ./tools/build.ts addon --backend ${{ matrix.backend }}
+
+      - name: Build JS package for smoke test
+        run: bun run ./tools/build.ts js
 
       - name: Smoke test
         if: matrix.smoke
         run: bun run test
 
       - name: Stage artifacts
-        run: bun run ./tools/ci.ts stage
+        run: bun run ./tools/stage.ts addon
 
       - name: Upload artifacts
         if: ${{ !env.ACT }}
@@ -108,7 +113,7 @@ jobs:
         run: bun run ./tools/build.ts js
 
       - name: Stage artifacts
-        run: bun run ./tools/ci.ts stage
+        run: bun run ./tools/stage.ts js
 
       - name: Upload artifacts
         if: ${{ !env.ACT }}
