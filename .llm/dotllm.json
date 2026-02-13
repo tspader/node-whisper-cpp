@@ -6,11 +6,11 @@
       "uri": "git@github.com:withcatai/node-llama-cpp.git",
       "description": ""
     },
-    "documentation": {
+    "npm-docs": {
       "kind": "url",
-      "name": "documentation",
+      "name": "npm-docs",
       "uri": "git@github.com:npm/documentation.git",
-      "description": ""
+      "description": "Documentation for the npm registry, website, and command-line interface."
     }
   }
 }
