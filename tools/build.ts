@@ -188,7 +188,9 @@ namespace Addon {
     await $`mkdir -p ${dirs.store.addon(target)}`.cwd(REPO);
     await $`cmake --install ${dirs.ADDON_BUILD} --config Release --prefix ${join(dirs.store.addon(target), "bins")}`.cwd(REPO);
     materializeDylibAliases(target);
-    await $`cp ${dirs.ADDON_PACKAGE_JSON(target)} ${join(dirs.store.addon(target), "package.json")}`.cwd(REPO);
+    const addonPkg = JSON.parse(readFileSync(dirs.ADDON_PACKAGE_JSON(target), "utf8"));
+    addonPkg.version = JSON.parse(readFileSync(join(REPO, "package.json"), "utf8")).version;
+    writeFileSync(join(dirs.store.addon(target), "package.json"), `${JSON.stringify(addonPkg, null, 2)}\n`);
     await $`node ${tsc} --project ${dirs.ADDON_TSCONFIG(target)} --outDir ${join(dirs.store.addon(target), "dist")}`.cwd(REPO);
   }
 

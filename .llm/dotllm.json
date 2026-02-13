@@ -5,6 +5,12 @@
       "name": "node-llama-cpp",
       "uri": "git@github.com:withcatai/node-llama-cpp.git",
       "description": ""
+    },
+    "documentation": {
+      "kind": "url",
+      "name": "documentation",
+      "uri": "git@github.com:npm/documentation.git",
+      "description": ""
     }
   }
 }
