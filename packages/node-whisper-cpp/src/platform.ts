@@ -53,7 +53,7 @@ function detectBackend(): Backend {
   throw new Error(`Unsupported OS: ${os}`)
 }
 
-const getPackageName = (target: Target) => {
+const getPlatformId = (target: Target) => {
   const parts: string[] = [target.arch, target.os, target.backend]
   if (os === "linux") {
     parts.push(target.libc)
@@ -61,9 +61,13 @@ const getPackageName = (target: Target) => {
   return parts.join("-")
 }
 
+const getPackageName = (target: Target) => {
+  return `node-whisper-cpp-${getPlatformId(target)}`
+}
+
 function detect(): string {
   const target: Target = detectTarget()
-  return getPackageName(target)
+  return getPlatformId(target)
 }
 
 function detectTarget(): Target {
@@ -80,7 +84,7 @@ function detectTarget(): Target {
 
 function resolve(backend?: Backend): string {
   const target: Target = resolveTarget(backend);
-  return getPackageName(target);
+  return getPlatformId(target);
 }
 
 function resolveTarget(backend?: Backend): Target {
@@ -92,4 +96,4 @@ function resolveTarget(backend?: Backend): Target {
 }
 
 
-export { detect, detectTarget, resolve, resolveTarget, getPackageName }
+export { detect, detectTarget, resolve, resolveTarget, getPlatformId, getPackageName }

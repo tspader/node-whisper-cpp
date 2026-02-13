@@ -1,7 +1,5 @@
-import { existsSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-
-import { $ } from "bun";
 
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -9,9 +7,28 @@ import { hideBin } from "yargs/helpers";
 import { bump } from "./version";
 import { install } from "./install";
 
-const dir = join(import.meta.dir, "..");
-const img = "node-whisper-cpp-ci-linux";
+const root = join(import.meta.dir, "..");
+const npmDir = join(root, ".cache", "store", "npm");
+const artifactsDir = join(root, "artifacts");
 
+function stage() {
+  rmSync(artifactsDir, { recursive: true, force: true });
+  mkdirSync(artifactsDir, { recursive: true });
+
+  // copy every .tgz under .cache/store/npm (recurses into @spader/)
+  function walk(dir: string) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        walk(join(dir, entry.name));
+      } else if (entry.name.endsWith(".tgz")) {
+        copyFileSync(join(dir, entry.name), join(artifactsDir, entry.name));
+        console.log(`staged ${entry.name}`);
+      }
+    }
+  }
+
+  walk(npmDir);
+}
 
 async function main() {
   await yargs(hideBin(process.argv))
@@ -23,20 +40,10 @@ async function main() {
       async () => await install(),
     )
     .command(
-      "image",
-      "Build local Linux CI Docker image",
-      (command) => command.option("tag", { type: "string", default: img, desc: "Docker image tag" }),
-      async (argv) => {
-        await $`docker build -f tools/docker/linux/Dockerfile -t ${argv.tag} .`.cwd(dir);
-      }
-    )
-    .command(
-      "build",
-      "Build via GH workflow",
+      "stage",
+      "Copy tarballs to artifacts/",
       (command) => command,
-      async () => {
-        await $`act workflow_dispatch -W .github/workflows/build.yml -j build --container-architecture linux/amd64 -P ubuntu-22.04=ghcr.io/catthehacker/ubuntu:full-22.04`.cwd(dir);
-      }
+      () => stage(),
     )
     .command(
       "version <bump>",

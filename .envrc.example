@@ -1,0 +1,1 @@
+export NODE_WHISPER_CPP_BACKEND="cpu"

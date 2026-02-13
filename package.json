@@ -24,7 +24,7 @@
     "package.json"
   ],
   "scripts": {
-    "build": "bun run ./tools/build.ts system",
+    "build": "bun run ./tools/build.ts all",
     "install:ci": "bun run ./tools/ci.ts install",
     "test": "bun test ./test/smoke.test.ts",
     "clean": "bun run ./tools/clean.ts"

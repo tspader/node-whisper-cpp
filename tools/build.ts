@@ -39,8 +39,8 @@ const dirs = {
   },
   tarballs: {
     addon: (target: Target) => join(REPO, ".cache", "store", "npm", "@spader", `${getPackageName(target)}.tgz`),
-    js: join(REPO, ".cache", "store", "npm", "node-whisper-cpp.tgz"),
-  }
+    js: join(REPO, ".cache", "store", "npm", "@spader", "node-whisper-cpp.tgz"),
+  },
 };
 
 async function packTarball(sourceDir: string, outputPath: string) {

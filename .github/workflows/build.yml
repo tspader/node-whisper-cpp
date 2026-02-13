@@ -32,13 +32,9 @@ jobs:
       matrix:
         include:
           - triple: x64-linux-cpu-gnu
-            os: linux
-            arch: x64
             backend: cpu
             smoke: true
           - triple: x64-linux-cuda-gnu
-            os: linux
-            arch: x64
             backend: cuda
             cuda: "12.6.3"
             smoke: false
@@ -55,31 +51,30 @@ jobs:
       - name: Install dependencies
         run: bun run ./tools/ci.ts install
 
+      - name: Cache CUDA apt packages
+        if: matrix.cuda
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives/*.deb
+          key: cuda-apt-${{ matrix.cuda }}
+
       - name: Setup CUDA
         if: matrix.cuda
         run: bun run ./tools/cuda.ts install ${{ matrix.cuda }}
 
       - name: Bump version
         if: inputs.bump || inputs.version
-        id: version
         run: bun run ./tools/ci.ts version ${{ inputs.version || inputs.bump }}
 
       - name: Build
-        run: bun run ./tools/build.ts all --backend ${{ matrix.backend }}
+        run: bun run ./tools/build.ts addon --backend ${{ matrix.backend }}
 
       - name: Smoke test
         if: matrix.smoke
         run: bun run test
-        env:
-          NODE_WHISPER_CPP_BACKEND: ${{ matrix.backend }}
 
       - name: Stage artifacts
-        run: |
-          TRIPLE="${{ matrix.triple }}"
-          mkdir -p "artifacts/${TRIPLE}"
-          cp ".cache/store/npm/@spader/node-whisper-cpp.tgz" "artifacts/${TRIPLE}/"
-          cp ".cache/store/npm/@spader/node-whisper-cpp-${TRIPLE}.tgz" "artifacts/${TRIPLE}/"
-          cp -R ".cache/store/addon/${TRIPLE}/bins" "artifacts/${TRIPLE}/bins"
+        run: bun run ./tools/ci.ts stage
 
       - name: Upload artifacts
         if: ${{ !env.ACT }}
@@ -87,14 +82,48 @@ jobs:
         with:
           include-hidden-files: true
           name: ${{ matrix.triple }}
-          path: artifacts/${{ matrix.triple }}
+          path: artifacts
+
+  package:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Bump version
+        if: inputs.bump || inputs.version
+        id: version
+        run: bun run ./tools/ci.ts version ${{ inputs.version || inputs.bump }}
+
+      - name: Build
+        run: bun run ./tools/build.ts js
+
+      - name: Stage artifacts
+        run: bun run ./tools/ci.ts stage
+
+      - name: Upload artifacts
+        if: ${{ !env.ACT }}
+        uses: actions/upload-artifact@v4
+        with:
+          include-hidden-files: true
+          name: js
+          path: artifacts
 
     outputs:
       version: ${{ steps.version.outputs.version }}
 
   publish:
-    needs: build
-    if: needs.build.outputs.version
+    needs: package
+    if: needs.package.outputs.version
     runs-on: ubuntu-latest
     environment: production
 
@@ -112,44 +141,25 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: Verify all expected tarballs exist
-        run: |
-          MISSING=0
-          for dir in artifacts/*/; do
-            TRIPLE=$(basename "$dir")
-            for f in "node-whisper-cpp.tgz" "node-whisper-cpp-${TRIPLE}.tgz"; do
-              if [ ! -f "artifacts/${TRIPLE}/${f}" ]; then
-                echo "Missing: artifacts/${TRIPLE}/${f}"
-                MISSING=1
-              fi
-            done
-          done
-          if [ "$MISSING" -eq 1 ]; then exit 1; fi
-          echo "All tarballs verified"
+          merge-multiple: true
 
       - name: Publish platform packages
         run: |
-          for dir in artifacts/*/; do
-            TRIPLE=$(basename "$dir")
-            TARBALL="artifacts/${TRIPLE}/node-whisper-cpp-${TRIPLE}.tgz"
-            echo "Publishing @spader/node-whisper-cpp-${TRIPLE}"
-            npm publish "$TARBALL" --access public
+          for tgz in artifacts/node-whisper-cpp-*.tgz; do
+            echo "Publishing $tgz"
+            npm publish "$tgz" --access public
           done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish main package
-        run: |
-          TARBALL=$(ls artifacts/*/node-whisper-cpp.tgz | head -1)
-          echo "Publishing @spader/node-whisper-cpp from $TARBALL"
-          npm publish "$TARBALL" --access public
+        run: npm publish artifacts/node-whisper-cpp.tgz --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Tag release
         run: |
-          VERSION="${{ needs.build.outputs.version }}"
+          VERSION="${{ needs.package.outputs.version }}"
           git tag "v${VERSION}"
           git push origin "v${VERSION}"
         env:
