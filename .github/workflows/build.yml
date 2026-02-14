@@ -36,6 +36,10 @@ jobs:
             backend: cuda
             cuda: "12.6.3"
             smoke: false
+          - triple: arm64-darwin-metal
+            os: macos-26
+            backend: metal
+            smoke: false
 
     steps:
       - name: Checkout
@@ -46,15 +50,15 @@ jobs:
         with:
           bun-version-file: package.json
 
-      - name: Install dependencies
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
         run: bun run ./tools/ci.ts install
 
-      - name: Cache CUDA apt packages
-        if: matrix.cuda
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives/*.deb
-          key: cuda-apt-${{ matrix.cuda }}
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake ninja
+          bun install --frozen-lockfile
 
       - name: Setup CUDA
         if: matrix.cuda
@@ -65,7 +69,7 @@ jobs:
         run: bun run ./tools/ci.ts version ${{ inputs.version || inputs.bump }}
 
       - name: Build native addon
-        run: bun run ./tools/build.ts addon --backend ${{ matrix.backend }}
+        run: bun run ./tools/build.ts addon --backend ${{ matrix.backend }} --ci
 
       - name: Build JS package for smoke test
         run: bun run ./tools/build.ts js

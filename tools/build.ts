@@ -18,6 +18,7 @@ const cmakeJs = require.resolve("cmake-js/bin/cmake-js");
 
 interface RunOptions {
   dryRun?: boolean;
+  ci?: boolean;
 }
 
 const dirs = {
@@ -62,73 +63,79 @@ namespace Native {
     ];
   }
 
-  interface CMakeConfig {
-    source: string;
-    buildDir: string;
-    generator: string;
-    buildType: string;
-    prefix: string;
-    defines: string[];
+  export namespace CMake {
+    interface Config {
+      source: string;
+      buildDir: string;
+      generator: string;
+      buildType: string;
+      prefix: string;
+      defines: string[];
+    }
+
+    export interface Builder {
+      source(dir: string): Builder;
+      buildDir(dir: string): Builder;
+      generator(gen: string): Builder;
+      buildType(type: string): Builder;
+      prefix(dir: string): Builder;
+      define(key: string, value: string): Builder;
+      defineIf(key: string, value: string, pred: () => boolean): Builder;
+      defines(defs: string[]): Builder;
+      configure(): Builder;
+      build(): Builder;
+      install(): Builder;
+    }
+
+    function run(args: string[]) {
+      const result = Bun.spawnSync(["cmake", ...args], { cwd: REPO, stdio: ["inherit", "inherit", "inherit"] });
+      if (!result.success) throw new Error(`cmake exited with code ${result.exitCode}`);
+    }
+
+    export function create(): Builder {
+      const config: Config = {
+        source: "",
+        buildDir: "",
+        generator: "",
+        buildType: "Release",
+        prefix: "",
+        defines: [],
+      };
+      const chain: Builder = {
+        source(dir)              { config.source = dir; return chain; },
+        buildDir(dir)            { config.buildDir = dir; return chain; },
+        generator(gen)           { config.generator = gen; return chain; },
+        buildType(type)          { config.buildType = type; return chain; },
+        prefix(dir)              { config.prefix = dir; return chain; },
+        define(key, value)       { config.defines.push(`-D${key}=${value}`); return chain; },
+        defineIf(key, value, pred) { if (pred()) config.defines.push(`-D${key}=${value}`); return chain; },
+        defines(defs)            { config.defines.push(...defs); return chain; },
+        configure() {
+          run([
+            "-S", config.source,
+            "-B", config.buildDir,
+            ...(config.generator ? ["-G", config.generator] : []),
+            `-DCMAKE_BUILD_TYPE=${config.buildType}`,
+            ...(config.prefix ? [`-DCMAKE_INSTALL_PREFIX=${config.prefix}`] : []),
+            ...config.defines,
+          ]);
+          return chain;
+        },
+        build() {
+          run(["--build", config.buildDir, "--config", config.buildType]);
+          return chain;
+        },
+        install() {
+          run(["--install", config.buildDir, "--config", config.buildType]);
+          return chain;
+        },
+      };
+      return chain;
+    }
   }
 
-  export interface CMakeChain {
-    source(dir: string): CMakeChain;
-    buildDir(dir: string): CMakeChain;
-    generator(gen: string): CMakeChain;
-    buildType(type: string): CMakeChain;
-    prefix(dir: string): CMakeChain;
-    define(key: string, value: string): CMakeChain;
-    defineIf(key: string, value: string, pred: () => boolean): CMakeChain;
-    defines(defs: string[]): CMakeChain;
-    configure(): CMakeChain;
-    build(): CMakeChain;
-    install(): CMakeChain;
-  }
-
-  function run(args: string[]) {
-    const result = Bun.spawnSync(["cmake", ...args], { cwd: REPO, stdio: ["inherit", "inherit", "inherit"] });
-    if (!result.success) throw new Error(`cmake exited with code ${result.exitCode}`);
-  }
-
-  export function cmake(): CMakeChain {
-    const config: CMakeConfig = {
-      source: "",
-      buildDir: "",
-      generator: "",
-      buildType: "Release",
-      prefix: "",
-      defines: [],
-    };
-    const chain: CMakeChain = {
-      source(dir)          { config.source = dir; return chain; },
-      buildDir(dir)        { config.buildDir = dir; return chain; },
-      generator(gen)       { config.generator = gen; return chain; },
-      buildType(type)      { config.buildType = type; return chain; },
-      prefix(dir)          { config.prefix = dir; return chain; },
-      define(key, value)   { config.defines.push(`-D${key}=${value}`); return chain; },
-      defineIf(key, value, pred) { if (pred()) config.defines.push(`-D${key}=${value}`); return chain; },
-      defines(defs)        { config.defines.push(...defs); return chain; },
-      configure() {
-        run([
-          "-S", config.source,
-          "-B", config.buildDir,
-          ...(config.generator ? ["-G", config.generator] : []),
-          `-DCMAKE_BUILD_TYPE=${config.buildType}`,
-          ...(config.prefix ? [`-DCMAKE_INSTALL_PREFIX=${config.prefix}`] : []),
-          ...config.defines,
-        ]);
-        return chain;
-      },
-      build() {
-        run(["--build", config.buildDir, "--config", config.buildType]);
-        return chain;
-      },
-      install() {
-        run(["--install", config.buildDir, "--config", config.buildType]);
-        return chain;
-      },
-    };
-    return chain;
+  export function cmake(): CMake.Builder {
+    return CMake.create();
   }
 
   export async function build(target: Target, options: RunOptions = {}) {
@@ -149,9 +156,13 @@ namespace Native {
       .define("BUILD_SHARED_LIBS", "ON")
       .define("WHISPER_BUILD_EXAMPLES", "OFF")
       .define("WHISPER_BUILD_TESTS", "OFF")
-      .defineIf("GGML_CUDA", "ON", () => target.backend == "cuda")
-      .defineIf("GGML_METAL", "ON", () => target.backend == "metal")
-      .defineIf("GGML_VULKAN", "ON", () => target.backend == "vulkan")
+      .defineIf("GGML_CUDA", "ON", () => target.backend === "cuda")
+      .defineIf("GGML_METAL", "ON", () => target.backend === "metal")
+      .defineIf("GGML_VULKAN", "ON", () => target.backend === "vulkan")
+      .defineIf("GGML_NATIVE", "OFF",                     () => !!options.ci && target.arch === "x64")
+      .defineIf("GGML_CPU_ALL_VARIANTS", "ON",            () => !!options.ci && target.arch === "x64")
+      .defineIf("GGML_BACKEND_DL", "ON",                  () => !!options.ci)
+      .defineIf("GGML_OPENMP", "OFF",                     () => !!options.ci)
       .defines(cmakeFlags(target.os))
       .configure()
       .build()
@@ -267,9 +278,10 @@ export const Build = {
   },
 };
 
-const backendOption = (command: Argv) => {
+const buildOptions = (command: Argv) => {
   return command
-    .option("backend", { type: "string", choices: ["metal", "cpu", "cuda", "vulkan"] as const });
+    .option("backend", { type: "string", choices: ["metal", "cpu", "cuda", "vulkan"] as const })
+    .option("ci", { type: "boolean", desc: "Enable CI build flags (disable native, set CUDA architectures)", default: false });
 };
 
 async function main() {
@@ -278,20 +290,21 @@ async function main() {
     .command(
       "native",
       "Build whisper native libraries",
-      backendOption,
+      buildOptions,
       async (argv) => {
         const target = resolveTarget(argv.backend as Backend | undefined);
-        await Native.build(target);
+        await Native.build(target, { ci: argv.ci });
       }
     )
     .command(
       "addon",
       "Build node addon",
-      backendOption,
+      buildOptions,
       async (argv) => {
         const target = resolveTarget(argv.backend as Backend | undefined);
-        await Native.build(target);
-        await Addon.build(target);
+        const opts = { ci: argv.ci };
+        await Native.build(target, opts);
+        await Addon.build(target, opts);
         await Addon.pack(target);
       }
     )
@@ -307,11 +320,12 @@ async function main() {
     .command(
       "all",
       "Run native + addon + js + pack",
-      backendOption,
+      buildOptions,
       async (argv) => {
         const target = resolveTarget(argv.backend as Backend | undefined);
-        await Native.build(target);
-        await Addon.build(target);
+        const opts = { ci: argv.ci };
+        await Native.build(target, opts);
+        await Addon.build(target, opts);
         await Js.build();
         await Addon.pack(target);
         await Js.pack();
