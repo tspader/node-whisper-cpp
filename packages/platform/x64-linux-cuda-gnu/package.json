@@ -1,6 +1,6 @@
 {
   "name": "@spader/node-whisper-cpp-x64-linux-cuda-gnu",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Prebuilt @spader/node-whisper-cpp binary for Linux x64 CUDA glibc",
   "type": "module",
   "main": "./dist/index.js",
