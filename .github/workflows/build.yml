@@ -53,6 +53,9 @@ jobs:
         if: matrix.cuda
         run: bun run ./tools/cuda.ts install ${{ matrix.cuda }}
 
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: Build native addon
         run: bun run ./tools/build.ts addon --backend ${{ matrix.backend }} --ci
 
