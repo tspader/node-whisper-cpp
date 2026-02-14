@@ -44,7 +44,7 @@ export const install = async () => {
   commands.push(providers.apt.init!());
   commands.push(providers.apt.batch(config.apt));
 
-  commands.push("bun install --frozen-lockfile")
+  commands.push("bun install")
 
   for (const command of commands) {
     console.log(`$ ${command}`);
