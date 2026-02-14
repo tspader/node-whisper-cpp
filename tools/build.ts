@@ -25,16 +25,18 @@ const dirs = {
   CACHE: join(REPO, ".cache"),
   STORE: join(REPO, ".cache", "store"),
   JS_INSTALL: join(REPO, ".cache", "store", "js"),
-  WHISPER_SOURCE: join(REPO, ".cache", "source", "whisper.cpp"),
-  WHISPER_BUILD_ROOT: join(REPO, ".cache", "build"),
-  WHISPER_BUILD: (target: Target) => join(REPO, ".cache", "build", getPlatformId(target), "whisper"),
-  WHISPER_INSTALL: (target: Target) => join(REPO, ".cache", "store", "whisper.cpp", getPlatformId(target)),
   ADDON_BUILD: join(REPO, ".cache", "build", "node"),
   ADDON_PACKAGE_JSON: (target: Target) => join(REPO, "packages", "platform", getPlatformId(target), "package.json"),
   ADDON_TSCONFIG: (target: Target) => join(REPO, "packages", "platform", getPlatformId(target), "tsconfig.json"),
   source: join(REPO, ".cache", "source"),
+  whisper: join(REPO, ".cache", "source", "whisper.cpp"),
+  build: {
+    dir: join(REPO, ".cache", "build"),
+    whisper: (target: Target) => join(REPO, ".cache", "build", getPlatformId(target), "whisper"),
+  },
   store: {
     addon: (target: Target) => join(REPO, ".cache", "store", "addon", getPlatformId(target)),
+    whisper: (target: Target) => join(REPO, ".cache", "store", "whisper.cpp", getPlatformId(target)),
   },
   tarballs: join(REPO, ".cache", "store", "npm"),
 };
@@ -45,14 +47,7 @@ async function packTarball(sourceDir: string, outputDir: string) {
 }
 
 namespace Native {
-  function getWhisperBackendFlags(backend: Backend) {
-    if (backend === "metal") return ["-DGGML_METAL=ON"];
-    if (backend === "cuda") return ["-DGGML_CUDA=ON"];
-    if (backend === "vulkan") return ["-DGGML_VULKAN=ON"];
-    return [];
-  }
-
-  function getWhisperRuntimeFlags(os: Os) {
+  function cmakeFlags(os: Os) {
     const common = ["-DCMAKE_PLATFORM_NO_VERSIONED_SONAME=ON"];
     if (os !== "linux") {
       return common;
@@ -67,21 +62,100 @@ namespace Native {
     ];
   }
 
+  interface CMakeConfig {
+    source: string;
+    buildDir: string;
+    generator: string;
+    buildType: string;
+    prefix: string;
+    defines: string[];
+  }
+
+  export interface CMakeChain {
+    source(dir: string): CMakeChain;
+    buildDir(dir: string): CMakeChain;
+    generator(gen: string): CMakeChain;
+    buildType(type: string): CMakeChain;
+    prefix(dir: string): CMakeChain;
+    define(key: string, value: string): CMakeChain;
+    defineIf(key: string, value: string, pred: () => boolean): CMakeChain;
+    defines(defs: string[]): CMakeChain;
+    configure(): CMakeChain;
+    build(): CMakeChain;
+    install(): CMakeChain;
+  }
+
+  function run(args: string[]) {
+    const result = Bun.spawnSync(["cmake", ...args], { cwd: REPO, stdio: ["inherit", "inherit", "inherit"] });
+    if (!result.success) throw new Error(`cmake exited with code ${result.exitCode}`);
+  }
+
+  export function cmake(): CMakeChain {
+    const config: CMakeConfig = {
+      source: "",
+      buildDir: "",
+      generator: "",
+      buildType: "Release",
+      prefix: "",
+      defines: [],
+    };
+    const chain: CMakeChain = {
+      source(dir)          { config.source = dir; return chain; },
+      buildDir(dir)        { config.buildDir = dir; return chain; },
+      generator(gen)       { config.generator = gen; return chain; },
+      buildType(type)      { config.buildType = type; return chain; },
+      prefix(dir)          { config.prefix = dir; return chain; },
+      define(key, value)   { config.defines.push(`-D${key}=${value}`); return chain; },
+      defineIf(key, value, pred) { if (pred()) config.defines.push(`-D${key}=${value}`); return chain; },
+      defines(defs)        { config.defines.push(...defs); return chain; },
+      configure() {
+        run([
+          "-S", config.source,
+          "-B", config.buildDir,
+          ...(config.generator ? ["-G", config.generator] : []),
+          `-DCMAKE_BUILD_TYPE=${config.buildType}`,
+          ...(config.prefix ? [`-DCMAKE_INSTALL_PREFIX=${config.prefix}`] : []),
+          ...config.defines,
+        ]);
+        return chain;
+      },
+      build() {
+        run(["--build", config.buildDir, "--config", config.buildType]);
+        return chain;
+      },
+      install() {
+        run(["--install", config.buildDir, "--config", config.buildType]);
+        return chain;
+      },
+    };
+    return chain;
+  }
+
   export async function build(target: Target, options: RunOptions = {}) {
     if (options.dryRun) {
       return;
     }
 
-    if (!exists(dirs.WHISPER_SOURCE)) {
+    if (!exists(dirs.whisper)) {
       await $`mkdir -p ${dirs.source}`.cwd(REPO);
       await $`git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git`.cwd(dirs.source);
     }
 
-    await $
-      `cmake -S ${dirs.WHISPER_SOURCE} -B ${dirs.WHISPER_BUILD(target)} -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${dirs.WHISPER_INSTALL(target)} -DBUILD_SHARED_LIBS=ON -DWHISPER_BUILD_EXAMPLES=OFF -DWHISPER_BUILD_TESTS=OFF ${getWhisperBackendFlags(target.backend)} ${getWhisperRuntimeFlags(target.os)}`
-      .cwd(REPO);
-    await $`cmake --build ${dirs.WHISPER_BUILD(target)} --config Release`.cwd(REPO);
-    await $`cmake --install ${dirs.WHISPER_BUILD(target)} --config Release`.cwd(REPO);
+    cmake()
+      .source(dirs.whisper)
+      .buildDir(dirs.build.whisper(target))
+      .generator("Ninja")
+      .prefix(dirs.store.whisper(target))
+      .define("BUILD_SHARED_LIBS", "ON")
+      .define("WHISPER_BUILD_EXAMPLES", "OFF")
+      .define("WHISPER_BUILD_TESTS", "OFF")
+      .defineIf("GGML_CUDA", "ON", () => target.backend == "cuda")
+      .defineIf("GGML_METAL", "ON", () => target.backend == "metal")
+      .defineIf("GGML_VULKAN", "ON", () => target.backend == "vulkan")
+      .defines(cmakeFlags(target.os))
+      .configure()
+      .build()
+      .install();
   }
 
   export async function clean(options: RunOptions = {}) {
@@ -89,7 +163,7 @@ namespace Native {
       return;
     }
 
-    await $`rm -rf ${dirs.WHISPER_BUILD_ROOT}`.cwd(REPO);
+    await $`rm -rf ${dirs.build.dir}`.cwd(REPO);
   }
 }
 
