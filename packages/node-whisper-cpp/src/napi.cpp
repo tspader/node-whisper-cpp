@@ -1,7 +1,23 @@
 #include <napi.h>
 #include <whisper.h>
+#include <ggml-backend.h>
+#include <dlfcn.h>
 #include <string>
 #include <vector>
+
+// Resolve the directory containing this .node binary at runtime via dladdr.
+// Used to tell ggml where to find dynamically-loaded backend plugins
+// (CPU variants, CUDA, etc.) that live alongside the addon.
+static std::string get_addon_dir() {
+    Dl_info info;
+    if (dladdr(reinterpret_cast<void*>(get_addon_dir), &info) && info.dli_fname) {
+        std::string path(info.dli_fname);
+        auto pos = path.find_last_of('/');
+        if (pos != std::string::npos)
+            return path.substr(0, pos);
+    }
+    return ".";
+}
 
 // ── AsyncWorker for whisper_full (runs off the main thread) ──────────────
 
@@ -288,6 +304,12 @@ Napi::Value GetSystemInfo(const Napi::CallbackInfo& info) {
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    // Load ggml backend plugins (CPU variants, CUDA, etc.) from the directory
+    // containing this .node file. Required for GGML_BACKEND_DL builds where
+    // backends are separate .so files rather than statically linked.
+    std::string dir = get_addon_dir();
+    ggml_backend_load_all_from_path(dir.c_str());
+
     WhisperContextWrap::Init(env, exports);
     exports.Set("version", Napi::Function::New(env, GetVersion));
     exports.Set("systemInfo", Napi::Function::New(env, GetSystemInfo));
