@@ -25,7 +25,8 @@
   ],
   "scripts": {
     "build": "bun run ./tools/build.ts all",
-    "install:ci": "bun run ./tools/ci.ts install",
+    "smoke": "NODE_WHISPER_CPP_BACKEND=cpu bun run ./tools/build.ts all && bun run test",
+    "smoke:cpu": "NODE_WHISPER_CPP_BACKEND=cpu bun run ./tools/build.ts all --ci && bun run test",
     "test": "bun test ./test/smoke.test.ts",
     "clean": "bun run ./tools/clean.ts"
   },

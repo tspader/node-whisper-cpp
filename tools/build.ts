@@ -47,6 +47,95 @@ async function packTarball(sourceDir: string, outputDir: string) {
   await $`npm pack --pack-destination ${outputDir}`.cwd(sourceDir);
 }
 
+namespace CMake {
+  interface Config {
+    source: string;
+    buildDir: string;
+    generator: string;
+    buildType: string;
+    prefix: string;
+    defines: string[];
+  }
+
+  export interface Builder {
+    source(dir: string): Builder;
+    buildDir(dir: string): Builder;
+    generator(gen: string): Builder;
+    buildType(type: string): Builder;
+    prefix(dir: string): Builder;
+    define(key: string, value: string): Builder;
+    defineIf(key: string, value: string, pred: () => boolean): Builder;
+    defines(defs: string[]): Builder;
+    configure(): Builder;
+    build(): Builder;
+    install(): Builder;
+    js(outDir: string): Builder;
+  }
+
+  function run(args: string[]) {
+    const result = Bun.spawnSync(["cmake", ...args], { cwd: REPO, stdio: ["inherit", "inherit", "inherit"] });
+    if (!result.success) throw new Error(`cmake exited with code ${result.exitCode}`);
+  }
+
+  export function create(): Builder {
+    const config: Config = {
+      source: "",
+      buildDir: "",
+      generator: "",
+      buildType: "Release",
+      prefix: "",
+      defines: [],
+    };
+    const chain: Builder = {
+      source(dir)              { config.source = dir; return chain; },
+      buildDir(dir)            { config.buildDir = dir; return chain; },
+      generator(gen)           { config.generator = gen; return chain; },
+      buildType(type)          { config.buildType = type; return chain; },
+      prefix(dir)              { config.prefix = dir; return chain; },
+      define(key, value)       { config.defines.push(`-D${key}=${value}`); return chain; },
+      defineIf(key, value, pred) { if (pred()) config.defines.push(`-D${key}=${value}`); return chain; },
+      defines(defs)            { config.defines.push(...defs); return chain; },
+      configure() {
+        run([
+          "-S", config.source,
+          "-B", config.buildDir,
+          ...(config.generator ? ["-G", config.generator] : []),
+          `-DCMAKE_BUILD_TYPE=${config.buildType}`,
+          ...(config.prefix ? [`-DCMAKE_INSTALL_PREFIX=${config.prefix}`] : []),
+          ...config.defines,
+        ]);
+        return chain;
+      },
+      build() {
+        run(["--build", config.buildDir, "--config", config.buildType]);
+        return chain;
+      },
+      install() {
+        run([
+          "--install", config.buildDir,
+          "--config", config.buildType,
+          ...(config.prefix ? ["--prefix", config.prefix] : []),
+        ]);
+        return chain;
+      },
+      js(outDir: string) {
+        const cmakeJsDefines = config.defines.map((d) => `--CD${d.slice(2)}`);
+        const result = Bun.spawnSync(["node", cmakeJs, "compile", "--out", outDir, ...cmakeJsDefines], {
+          cwd: REPO,
+          stdio: ["inherit", "inherit", "inherit"],
+        });
+        if (!result.success) throw new Error(`cmake-js exited with code ${result.exitCode}`);
+        return chain;
+      },
+    };
+    return chain;
+  }
+}
+
+function cmake(): CMake.Builder {
+  return CMake.create();
+}
+
 namespace Native {
   function cmakeFlags(os: Os) {
     const common = ["-DCMAKE_PLATFORM_NO_VERSIONED_SONAME=ON"];
@@ -61,81 +150,6 @@ namespace Native {
       "-DCMAKE_BUILD_RPATH=$ORIGIN",
       "-DCMAKE_INSTALL_RPATH=$ORIGIN",
     ];
-  }
-
-  export namespace CMake {
-    interface Config {
-      source: string;
-      buildDir: string;
-      generator: string;
-      buildType: string;
-      prefix: string;
-      defines: string[];
-    }
-
-    export interface Builder {
-      source(dir: string): Builder;
-      buildDir(dir: string): Builder;
-      generator(gen: string): Builder;
-      buildType(type: string): Builder;
-      prefix(dir: string): Builder;
-      define(key: string, value: string): Builder;
-      defineIf(key: string, value: string, pred: () => boolean): Builder;
-      defines(defs: string[]): Builder;
-      configure(): Builder;
-      build(): Builder;
-      install(): Builder;
-    }
-
-    function run(args: string[]) {
-      const result = Bun.spawnSync(["cmake", ...args], { cwd: REPO, stdio: ["inherit", "inherit", "inherit"] });
-      if (!result.success) throw new Error(`cmake exited with code ${result.exitCode}`);
-    }
-
-    export function create(): Builder {
-      const config: Config = {
-        source: "",
-        buildDir: "",
-        generator: "",
-        buildType: "Release",
-        prefix: "",
-        defines: [],
-      };
-      const chain: Builder = {
-        source(dir)              { config.source = dir; return chain; },
-        buildDir(dir)            { config.buildDir = dir; return chain; },
-        generator(gen)           { config.generator = gen; return chain; },
-        buildType(type)          { config.buildType = type; return chain; },
-        prefix(dir)              { config.prefix = dir; return chain; },
-        define(key, value)       { config.defines.push(`-D${key}=${value}`); return chain; },
-        defineIf(key, value, pred) { if (pred()) config.defines.push(`-D${key}=${value}`); return chain; },
-        defines(defs)            { config.defines.push(...defs); return chain; },
-        configure() {
-          run([
-            "-S", config.source,
-            "-B", config.buildDir,
-            ...(config.generator ? ["-G", config.generator] : []),
-            `-DCMAKE_BUILD_TYPE=${config.buildType}`,
-            ...(config.prefix ? [`-DCMAKE_INSTALL_PREFIX=${config.prefix}`] : []),
-            ...config.defines,
-          ]);
-          return chain;
-        },
-        build() {
-          run(["--build", config.buildDir, "--config", config.buildType]);
-          return chain;
-        },
-        install() {
-          run(["--install", config.buildDir, "--config", config.buildType]);
-          return chain;
-        },
-      };
-      return chain;
-    }
-  }
-
-  export function cmake(): CMake.Builder {
-    return CMake.create();
   }
 
   export async function build(target: Target, options: RunOptions = {}) {
@@ -179,8 +193,6 @@ namespace Native {
 }
 
 namespace Addon {
-  const getCmakeTripleDefine = (target: Target) => `--CDWHISPER_TRIPLE=${getPlatformId(target)}`;
-
   function materializeDylibAliases(target: Target) {
     const binsDir = join(dirs.store.addon(target), "bins");
     if (!exists(binsDir)) {
@@ -213,10 +225,24 @@ namespace Addon {
       return;
     }
 
-    await $`node ${cmakeJs} compile --out ${dirs.ADDON_BUILD} ${getCmakeTripleDefine(target)}`.cwd(REPO);
+    const whisperDir = dirs.store.whisper(target);
+    const whisperBinDir = join(whisperDir, "bin");
+
+    cmake()
+      .buildDir(dirs.ADDON_BUILD)
+      .define("WHISPER_INCLUDE_DIR", join(whisperDir, "include"))
+      .define("WHISPER_LIB_DIR", join(whisperDir, "lib"))
+      .defineIf("WHISPER_BIN_DIR", whisperBinDir, () => exists(whisperBinDir))
+      .js(dirs.ADDON_BUILD);
+
     await $`rm -rf ${dirs.store.addon(target)}`.cwd(REPO);
     await $`mkdir -p ${dirs.store.addon(target)}`.cwd(REPO);
-    await $`cmake --install ${dirs.ADDON_BUILD} --config Release --prefix ${join(dirs.store.addon(target), "bins")}`.cwd(REPO);
+
+    cmake()
+      .buildDir(dirs.ADDON_BUILD)
+      .prefix(join(dirs.store.addon(target), "bins"))
+      .install();
+
     materializeDylibAliases(target);
     const addonPkg = JSON.parse(readFileSync(dirs.ADDON_PACKAGE_JSON(target), "utf8"));
     addonPkg.version = JSON.parse(readFileSync(join(REPO, "package.json"), "utf8")).version;
