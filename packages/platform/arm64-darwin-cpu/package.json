@@ -1,6 +1,6 @@
 {
   "name": "@spader/node-whisper-cpp-arm64-darwin-cpu",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Prebuilt @spader/node-whisper-cpp binary for macOS arm64 CPU",
   "type": "module",
   "main": "./dist/index.js",

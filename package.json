@@ -1,6 +1,6 @@
 {
   "name": "@spader/node-whisper-cpp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "packageManager": "bun@1.3.9",
   "main": "./dist/index.js",
@@ -31,10 +31,10 @@
     "clean": "bun run ./tools/clean.ts"
   },
   "optionalDependencies": {
-    "@spader/node-whisper-cpp-arm64-darwin-metal": "0.2.1",
-    "@spader/node-whisper-cpp-arm64-darwin-cpu": "0.2.1",
-    "@spader/node-whisper-cpp-x64-linux-cpu-gnu": "0.2.1",
-    "@spader/node-whisper-cpp-x64-linux-cuda-gnu": "0.2.1"
+    "@spader/node-whisper-cpp-arm64-darwin-metal": "0.2.2",
+    "@spader/node-whisper-cpp-arm64-darwin-cpu": "0.2.2",
+    "@spader/node-whisper-cpp-x64-linux-cpu-gnu": "0.2.2",
+    "@spader/node-whisper-cpp-x64-linux-cuda-gnu": "0.2.2"
   },
   "repository": {
     "type": "git",
