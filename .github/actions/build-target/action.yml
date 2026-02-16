@@ -37,6 +37,19 @@ runs:
         brew install cmake ninja
         bun install
 
+    - name: Resolve CUDA paths
+      if: inputs.cuda != ''
+      id: cuda-paths
+      shell: bash
+      run: bun run ./tools/cuda.ts paths "${{ inputs.cuda }}"
+
+    - name: Cache CUDA toolkit
+      if: inputs.cuda != ''
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.cuda-paths.outputs.path }}
+        key: cuda-toolkit-${{ inputs.cuda }}-${{ runner.os }}-${{ runner.arch }}
+
     - name: Cache sccache
       uses: actions/cache@v4
       with:
@@ -69,6 +82,11 @@ runs:
     - name: Stage artifacts
       shell: bash
       run: bun run ./tools/stage.ts addon
+
+    - name: Normalize CUDA cache permissions
+      if: inputs.cuda != '' && always()
+      shell: bash
+      run: bun run ./tools/cuda.ts normalize-cache-permissions "${{ inputs.cuda }}"
 
     - name: Show sccache stats
       if: always()

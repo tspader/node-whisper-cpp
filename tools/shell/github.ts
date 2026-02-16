@@ -1,4 +1,4 @@
-import { appendFileSync } from "node:fs";
+import * as core from "@actions/core";
 
 export function github() {
   const envPath = process.env.GITHUB_ENV;
@@ -8,7 +8,7 @@ export function github() {
   const builder = {
     export(key: string, value: string) {
       if (envPath) {
-        appendFileSync(envPath, `${key}=${value}\n`);
+        core.exportVariable(key, value);
       }
       return builder;
     },
@@ -16,19 +16,19 @@ export function github() {
       const existing = process.env[key] ?? "";
       const combined = existing ? `${value}${separator}${existing}` : value;
       if (envPath) {
-        appendFileSync(envPath, `${key}=${combined}\n`);
+        core.exportVariable(key, combined);
       }
       return builder;
     },
     path(value: string) {
       if (githubPath) {
-        appendFileSync(githubPath, `${value}\n`);
+        core.addPath(value);
       }
       return builder;
     },
     output(key: string, value: string) {
       if (outputPath) {
-        appendFileSync(outputPath, `${key}=${value}\n`);
+        core.setOutput(key, value);
       }
       return builder;
     },

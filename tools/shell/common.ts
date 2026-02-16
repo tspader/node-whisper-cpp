@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
+import { exec } from "@actions/exec";
+
 const dir = join(import.meta.dir, "..", "..");
 
 const root = () => process.getuid !== undefined && process.getuid() === 0;
@@ -8,13 +10,14 @@ const has = () => existsSync("/usr/bin/sudo");
 
 export const sudo = (args: string[]) => (root() || !has() ? args : ["sudo", ...args]);
 
-export function command(args: string[]) {
+export async function command(args: string[]) {
   console.log(`$ ${args.join(" ")}`);
-  const proc = Bun.spawnSync(args, {
+  const [tool, ...toolArgs] = args;
+  const exitCode = await exec(tool, toolArgs, {
     cwd: dir,
-    stdio: ["inherit", "inherit", "inherit"],
+    ignoreReturnCode: true,
   });
-  if (!proc.success) {
-    throw new Error(`command failed with exit code ${proc.exitCode}: ${args.join(" ")}`);
+  if (exitCode !== 0) {
+    throw new Error(`command failed with exit code ${exitCode}: ${args.join(" ")}`);
   }
 }

@@ -12,7 +12,7 @@ async function runWithRetries(args: string[]) {
 
   for (let attempt = 1; attempt <= APT_RETRIES; attempt++) {
     try {
-      command(sudo(args));
+      await command(sudo(args));
       return;
     } catch (error) {
       lastError = error;

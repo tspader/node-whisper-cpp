@@ -23,6 +23,12 @@
       "name": "cuda-toolkit",
       "uri": "git@github.com:Jimver/cuda-toolkit.git",
       "description": "GitHub Action to install CUDA"
+    },
+    "github-actions-toolkit": {
+      "kind": "url",
+      "name": "github-actions-toolkit",
+      "uri": "git@github.com:actions/toolkit.git",
+      "description": "The GitHub ToolKit for developing GitHub Actions."
     }
   }
 }

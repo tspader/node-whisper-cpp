@@ -20,5 +20,5 @@ export const install = async () => {
   await apt().update();
   await apt().batch(config.apt).install();
 
-  command(["bun", "install"]);
+  await command(["bun", "install"]);
 }

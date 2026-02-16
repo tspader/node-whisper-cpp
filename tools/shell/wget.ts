@@ -13,7 +13,7 @@ export function wget() {
         throw new Error("wget().download() requires .file(path) first");
       }
 
-      command(["wget", "-q", url, "-O", outFile]);
+      await command(["wget", "-q", url, "-O", outFile]);
       return builder;
     },
   };

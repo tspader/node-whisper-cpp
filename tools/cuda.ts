@@ -35,11 +35,11 @@ async function emitPaths(version: string) {
   try {
     mkdirSync(paths.cuda, { recursive: true });
   } catch {
-    command(sudo(["mkdir", "-p", paths.cuda]));
+    await command(sudo(["mkdir", "-p", paths.cuda]));
   }
 
   if (owner) {
-    command(sudo(["chown", "-R", `${owner}:${owner}`, paths.cuda]));
+    await command(sudo(["chown", "-R", `${owner}:${owner}`, paths.cuda]));
   }
 
   github()
@@ -55,7 +55,7 @@ async function normalizeCachePermissions(version: string) {
   const paths = pathsFor(version);
   const owner = process.env.USER;
   if (owner) {
-    command(sudo(["chown", "-R", `${owner}:${owner}`, paths.cuda]));
+    await command(sudo(["chown", "-R", `${owner}:${owner}`, paths.cuda]));
   }
 }
 

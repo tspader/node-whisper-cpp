@@ -4,6 +4,7 @@ import { hideBin } from "yargs/helpers";
 import { bump } from "./version";
 import { install } from "./install";
 import { publish } from "./publish";
+import { github } from "./shell/github";
 
 async function main() {
   await yargs(hideBin(process.argv))
@@ -27,7 +28,7 @@ async function main() {
         const version = await bump(argv.bump as string);
         console.log(`version: ${version}`);
         if (process.env.GITHUB_OUTPUT) {
-          await Bun.file(process.env.GITHUB_OUTPUT).writer().write(`version=${version}\n`);
+          github().output("version", version);
         }
       }
     )
