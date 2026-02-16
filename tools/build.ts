@@ -158,7 +158,7 @@ namespace Native {
     }
 
     if (!exists(dirs.whisper)) {
-      await $`mkdir -p ${dirs.source}`.cwd(REPO);
+      mkdirSync(dirs.source, { recursive: true });
       await $`git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git`.cwd(dirs.source);
     }
 
@@ -191,7 +191,7 @@ namespace Native {
       return;
     }
 
-    await $`rm -rf ${dirs.build.dir}`.cwd(REPO);
+    rmSync(dirs.build.dir, { recursive: true, force: true });
   }
 }
 
@@ -238,8 +238,8 @@ namespace Addon {
       .defineIf("WHISPER_BIN_DIR", whisperBinDir, () => exists(whisperBinDir))
       .js(dirs.ADDON_BUILD);
 
-    await $`rm -rf ${dirs.store.addon(target)}`.cwd(REPO);
-    await $`mkdir -p ${dirs.store.addon(target)}`.cwd(REPO);
+    rmSync(dirs.store.addon(target), { recursive: true, force: true });
+    mkdirSync(dirs.store.addon(target), { recursive: true });
 
     cmake()
       .buildDir(dirs.ADDON_BUILD)
@@ -272,8 +272,8 @@ namespace Js {
       return;
     }
 
-    await $`rm -rf ${dirs.JS_INSTALL}`.cwd(REPO);
-    await $`mkdir -p ${join(dirs.JS_INSTALL, "dist")}`.cwd(REPO);
+    rmSync(dirs.JS_INSTALL, { recursive: true, force: true });
+    mkdirSync(join(dirs.JS_INSTALL, "dist"), { recursive: true });
 
     const sourcePath = join(REPO, "package.json");
     const targetPath = join(dirs.JS_INSTALL, "package.json");

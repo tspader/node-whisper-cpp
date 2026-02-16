@@ -1,0 +1,102 @@
+name: build-target
+description: Build one target and upload addon artifacts
+
+inputs:
+  triple:
+    description: Target triple identifier
+    required: true
+  backend:
+    description: Backend to build
+    required: true
+  cuda:
+    description: CUDA version (major.minor.patch) or empty
+    required: false
+    default: ""
+  smoke:
+    description: Whether to run smoke tests (true/false)
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version-file: package.json
+
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: bun run ./tools/ci.ts install
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        brew install cmake ninja
+        bun install
+
+    - name: Resolve CUDA paths
+      if: inputs.cuda != ''
+      id: cuda-paths
+      shell: bash
+      run: bun run ./tools/cuda.ts paths "${{ inputs.cuda }}"
+
+    - name: Cache CUDA toolkit
+      if: inputs.cuda != ''
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.cuda-paths.outputs.path }}
+        key: cuda-toolkit-${{ inputs.cuda }}-${{ runner.os }}-${{ runner.arch }}
+
+    - name: Cache sccache
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.SCCACHE_DIR }}
+        key: sccache-${{ inputs.triple }}-${{ github.run_id }}
+        restore-keys: |
+          sccache-${{ inputs.triple }}-
+
+    - name: Setup CUDA
+      if: inputs.cuda != ''
+      shell: bash
+      run: bun run ./tools/cuda.ts install "${{ inputs.cuda }}"
+
+    - name: Setup sccache
+      uses: mozilla-actions/sccache-action@v0.0.9
+
+    - name: Build native addon
+      shell: bash
+      run: bun run ./tools/build.ts addon --backend "${{ inputs.backend }}" --ci
+
+    - name: Build JS package for smoke test
+      shell: bash
+      run: bun run ./tools/build.ts js
+
+    - name: Smoke test
+      if: inputs.smoke == 'true'
+      shell: bash
+      run: bun run test
+
+    - name: Stage artifacts
+      shell: bash
+      run: bun run ./tools/stage.ts addon
+
+    - name: Normalize CUDA cache permissions
+      if: inputs.cuda != '' && always()
+      shell: bash
+      run: bun run ./tools/cuda.ts normalize-cache-permissions "${{ inputs.cuda }}"
+
+    - name: Show sccache stats
+      if: always()
+      shell: bash
+      run: sccache --show-stats || true
+
+    - name: Upload artifacts
+      if: ${{ !env.ACT }}
+      uses: actions/upload-artifact@v4
+      with:
+        include-hidden-files: true
+        name: ${{ inputs.triple }}
+        path: artifacts

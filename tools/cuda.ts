@@ -1,7 +1,12 @@
-import { $ } from "bun";
-import { existsSync as exists } from "node:fs";
+import { existsSync as exists, mkdirSync } from "node:fs";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+
+import { apt } from "./shell/apt";
+import { run, sudo } from "./shell/common";
+import { dpkg } from "./shell/dpkg";
+import { github } from "./shell/github";
+import { wget } from "./shell/wget";
 
 const NVIDIA_REPO = "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64";
 const KEYRING_VERSION = "1.1-1";
@@ -23,31 +28,35 @@ function pathsFor(version: string) {
   };
 }
 
-async function writeOutput(name: string, value: string) {
-  if (!process.env.GITHUB_OUTPUT) {
-    return;
-  }
-
-  await $`echo ${name}=${value} >> ${process.env.GITHUB_OUTPUT}`;
-}
-
 async function emitPaths(version: string) {
   const paths = pathsFor(version);
+  const owner = process.env.USER;
 
-  await $`sudo mkdir -p ${paths.cuda}`;
-  await $`sudo chown -R ${process.env.USER}:${process.env.USER} ${paths.cuda}`;
+  try {
+    mkdirSync(paths.cuda, { recursive: true });
+  } catch {
+    await run(sudo(`mkdir -p '${paths.cuda}'`));
+  }
 
-  await writeOutput("path", paths.cuda);
-  await writeOutput("bin", paths.bin);
-  await writeOutput("lib", paths.lib);
-  await writeOutput("pkg", paths.pkg);
+  if (owner) {
+    await run(sudo(`chown -R '${owner}:${owner}' '${paths.cuda}'`));
+  }
+
+  github()
+    .output("path", paths.cuda)
+    .output("bin", paths.bin)
+    .output("lib", paths.lib)
+    .output("pkg", paths.pkg);
 
   console.log(JSON.stringify(paths));
 }
 
 async function normalizeCachePermissions(version: string) {
   const paths = pathsFor(version);
-  await $`sudo chown -R ${process.env.USER}:${process.env.USER} ${paths.cuda}`;
+  const owner = process.env.USER;
+  if (owner) {
+    await run(sudo(`chown -R '${owner}:${owner}' '${paths.cuda}'`));
+  }
 }
 
 async function install(version: string) {
@@ -55,8 +64,7 @@ async function install(version: string) {
 
   const paths = {
     deb: `${NVIDIA_REPO}/cuda-keyring_${KEYRING_VERSION}_all.deb`,
-    pin: `${NVIDIA_REPO}/cuda-ubuntu2204.pin`,
-    pinDest: "/etc/apt/preferences.d/cuda-repository-pin-600",
+    debFile: "/tmp/cuda-keyring.deb",
     pkg: base.pkg,
     cuda: base.cuda,
     bin: base.bin,
@@ -70,21 +78,22 @@ async function install(version: string) {
     console.log(`installing ${paths.pkg} from ${NVIDIA_REPO}`);
 
     // add nvidia apt repo
-    await $`wget -q ${paths.deb} -O /tmp/cuda-keyring.deb`;
-    await $`sudo dpkg -i /tmp/cuda-keyring.deb`;
-    await $`wget -q ${paths.pin} -O /tmp/cuda.pin`;
-    await $`sudo mv /tmp/cuda.pin ${paths.pinDest}`;
-    await $`sudo apt-get update`;
+    await wget()
+      .file(paths.debFile)
+      .download(paths.deb);
+    await dpkg().install(paths.debFile);
+    await apt().update();
 
     // install toolkit (no driver -- CI has no GPU)
-    await $`sudo apt-get install -y ${paths.pkg}`;
+    await apt().batch(paths.pkg).install();
   }
 
   // export env for subsequent github actions steps
   if (process.env.GITHUB_ENV && process.env.GITHUB_PATH) {
-    await $`echo CUDA_PATH=${paths.cuda} >> ${process.env.GITHUB_ENV}`;
-    await $`echo LD_LIBRARY_PATH=${paths.lib}:${process.env.LD_LIBRARY_PATH ?? ""} >> ${process.env.GITHUB_ENV}`;
-    await $`echo ${paths.bin} >> ${process.env.GITHUB_PATH}`;
+    github()
+      .export("CUDA_PATH", paths.cuda)
+      .append("LD_LIBRARY_PATH", paths.lib)
+      .path(paths.bin);
   }
 
   console.log(`cuda toolkit installed at ${paths.cuda}`);

@@ -11,6 +11,10 @@ permissions:
 
 jobs:
   build:
+    runs-on: ${{ matrix.os }}
+    env:
+      SCCACHE_DIR: ${{ github.workspace }}/.cache/sccache
+      SCCACHE_CACHE_SIZE: 4G
     strategy:
       fail-fast: false
       matrix:
@@ -28,13 +32,17 @@ jobs:
             os: macos-26
             backend: metal
             smoke: false
-    uses: ./.github/workflows/build-target.yml
-    with:
-      triple: ${{ matrix.triple }}
-      os: ${{ matrix.os }}
-      backend: ${{ matrix.backend }}
-      cuda: ${{ matrix.cuda || '' }}
-      smoke: ${{ matrix.smoke }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build target
+        uses: ./.github/actions/build-target
+        with:
+          triple: ${{ matrix.triple }}
+          backend: ${{ matrix.backend }}
+          cuda: ${{ matrix.cuda || '' }}
+          smoke: ${{ matrix.smoke }}
 
   package:
     needs: build
