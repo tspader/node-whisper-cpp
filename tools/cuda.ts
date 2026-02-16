@@ -3,7 +3,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import { apt } from "./shell/apt";
-import { run, sudo } from "./shell/common";
+import { command, sudo } from "./shell/common";
 import { dpkg } from "./shell/dpkg";
 import { github } from "./shell/github";
 import { wget } from "./shell/wget";
@@ -35,11 +35,11 @@ async function emitPaths(version: string) {
   try {
     mkdirSync(paths.cuda, { recursive: true });
   } catch {
-    await run(sudo(`mkdir -p '${paths.cuda}'`));
+    command(sudo(["mkdir", "-p", paths.cuda]));
   }
 
   if (owner) {
-    await run(sudo(`chown -R '${owner}:${owner}' '${paths.cuda}'`));
+    command(sudo(["chown", "-R", `${owner}:${owner}`, paths.cuda]));
   }
 
   github()
@@ -55,7 +55,7 @@ async function normalizeCachePermissions(version: string) {
   const paths = pathsFor(version);
   const owner = process.env.USER;
   if (owner) {
-    await run(sudo(`chown -R '${owner}:${owner}' '${paths.cuda}'`));
+    command(sudo(["chown", "-R", `${owner}:${owner}`, paths.cuda]));
   }
 }
 

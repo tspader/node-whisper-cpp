@@ -1,5 +1,5 @@
 import { apt } from "./shell/apt";
-import { run } from "./shell/common";
+import { command } from "./shell/common";
 
 export const install = async () => {
   const config = {
@@ -20,5 +20,5 @@ export const install = async () => {
   await apt().update();
   await apt().batch(config.apt).install();
 
-  await run("bun install");
+  command(["bun", "install"]);
 }

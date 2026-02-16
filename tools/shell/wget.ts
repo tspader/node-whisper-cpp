@@ -1,4 +1,4 @@
-import { quote, run } from "./common";
+import { command } from "./common";
 
 export function wget() {
   let outFile: string | undefined;
@@ -13,7 +13,7 @@ export function wget() {
         throw new Error("wget().download() requires .file(path) first");
       }
 
-      await run(`wget -q ${quote(url)} -O ${quote(outFile)}`);
+      command(["wget", "-q", url, "-O", outFile]);
       return builder;
     },
   };

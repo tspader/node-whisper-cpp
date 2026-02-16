@@ -1,11 +1,11 @@
-import { quote, run, sudo } from "./common";
+import { command, sudo } from "./common";
 
 export function apt() {
   const packages: string[] = [];
 
   const builder = {
     async update() {
-      await run(sudo("apt-get update"));
+      command(sudo(["apt-get", "update"]));
       return builder;
     },
     batch(pkgs: string | string[]) {
@@ -14,7 +14,7 @@ export function apt() {
     },
     async install() {
       if (packages.length > 0) {
-        await run(sudo(`apt-get install -y ${packages.map(quote).join(" ")}`));
+        command(sudo(["apt-get", "install", "-y", ...packages]));
       }
     },
   };
