@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "ESNext.Disposable"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@spader/node-whisper-cpp": ["../packages/node-whisper-cpp/src/index.ts"]
+    }
+  },
+  "include": ["*.ts", "../tools/model.ts"]
+}

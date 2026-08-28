@@ -1,0 +1,83 @@
+[
+  {
+    "name": "s16-16k-mono",
+    "file": "s16-16k-mono.wav",
+    "golden": "s16-16k-mono.f32",
+    "expect": {
+      "frames": 4000,
+      "exact": true
+    }
+  },
+  {
+    "name": "s16-16k-stereo",
+    "file": "s16-16k-stereo.wav",
+    "golden": "s16-16k-stereo.f32",
+    "expect": {
+      "frames": 4000,
+      "exact": true
+    }
+  },
+  {
+    "name": "u8-16k-mono",
+    "file": "u8-16k-mono.wav",
+    "golden": "u8-16k-mono.f32",
+    "expect": {
+      "frames": 4000,
+      "exact": true
+    }
+  },
+  {
+    "name": "s24-16k-mono",
+    "file": "s24-16k-mono.wav",
+    "golden": "s24-16k-mono.f32",
+    "expect": {
+      "frames": 4000,
+      "exact": true
+    }
+  },
+  {
+    "name": "s32-16k-mono",
+    "file": "s32-16k-mono.wav",
+    "golden": "s32-16k-mono.f32",
+    "expect": {
+      "frames": 4000,
+      "exact": true
+    }
+  },
+  {
+    "name": "f32-16k-mono",
+    "file": "f32-16k-mono.wav",
+    "golden": "f32-16k-mono.f32",
+    "expect": {
+      "frames": 4000,
+      "exact": true
+    }
+  },
+  {
+    "name": "s16-8k-mono",
+    "file": "s16-8k-mono.wav",
+    "golden": "s16-8k-mono.f32",
+    "expect": {
+      "frames": 4000,
+      "exact": false
+    }
+  },
+  {
+    "name": "s16-44k-mono",
+    "file": "s16-44k-mono.wav",
+    "golden": "s16-44k-mono.f32",
+    "expect": {
+      "frames": 4000,
+      "exact": false
+    }
+  },
+  {
+    "name": "s16-48k-stereo",
+    "file": "s16-48k-stereo.wav",
+    "golden": "s16-48k-stereo.f32",
+    "expect": {
+      "frames": 4000,
+      "exact": false
+    }
+  }
+]

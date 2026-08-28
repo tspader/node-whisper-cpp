@@ -1,0 +1,69 @@
+{
+  "name": "@spader/node-whisper-cpp",
+  "version": "0.4.0",
+  "type": "module",
+  "packageManager": "bun@1.3.9",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "imports": {
+    "#tools/build": "./tools/build.ts"
+  },
+  "files": [
+    "dist/",
+    "packages/platform/arm64-darwin-metal/",
+    "packages/platform/arm64-darwin-cpu/",
+    "packages/platform/x64-linux-cpu-gnu/",
+    "packages/platform/x64-linux-cuda-gnu/",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "bun run ./tools/build.ts all",
+    "act:build": "bun run ./tools/act.ts build",
+    "model": "bun run ./tools/model.ts",
+    "fixtures:audio": "bun run ./test/utils/audio-fixtures.ts",
+    "smoke": "NODE_WHISPER_CPP_BACKEND=cpu bun run ./tools/build.ts all --ci && bun run test:integration && bun run test:smoke",
+    "test": "bun test ./test/unit",
+    "test:unit": "bun test ./test/unit",
+    "test:integration": "bun test ./test/integration",
+    "test:smoke": "NODE_WHISPER_CPP_BACKEND=cpu bun test ./test/smoke",
+    "example:basic": "bun run ./example/basic.ts",
+    "example:streaming": "bun run ./example/streaming.ts",
+    "example:concurrent": "bun run ./example/concurrent.ts",
+    "example:kitchen-sink": "bun run ./example/kitchen-sink.ts",
+    "clean": "bun run ./tools/clean.ts"
+  },
+  "optionalDependencies": {
+    "@spader/node-whisper-cpp-arm64-darwin-metal": "0.4.0",
+    "@spader/node-whisper-cpp-arm64-darwin-cpu": "0.4.0",
+    "@spader/node-whisper-cpp-x64-linux-cpu-gnu": "0.4.0",
+    "@spader/node-whisper-cpp-x64-linux-cuda-gnu": "0.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tspader/node-whisper-cpp"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.3.1"
+  },
+  "devDependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/exec": "^1.1.1",
+    "@clack/prompts": "^1.0.0",
+    "@types/bun": "^1.2.21",
+    "@types/node": "^24.3.0",
+    "@types/yargs": "^17.0.35",
+    "cmake-js": "^7.3.0",
+    "typescript": "^5.9.3",
+    "yargs": "^18.0.0"
+  }
+}

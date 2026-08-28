@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    env:
+      SCCACHE_DIR: ${{ github.workspace }}/.cache/sccache
+      SCCACHE_CACHE_SIZE: 4G
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - triple: x64-linux-cpu-gnu
+            os: ubuntu-22.04
+            backend: cpu
+            smoke: true
+          - triple: x64-linux-cuda-gnu
+            os: ubuntu-22.04
+            backend: cuda
+            cuda: "12.6.3"
+            smoke: false
+          - triple: arm64-darwin-metal
+            os: macos-26
+            backend: metal
+            smoke: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build target
+        uses: ./.github/actions/build-target
+        with:
+          triple: ${{ matrix.triple }}
+          backend: ${{ matrix.backend }}
+          cuda: ${{ matrix.cuda || '' }}
+          smoke: ${{ matrix.smoke }}
+
+  package:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install JS dependencies
+        run: bun install
+
+      - name: Build
+        run: bun run ./tools/build.ts js
+
+      - name: Stage artifacts
+        run: bun run ./tools/stage.ts js
