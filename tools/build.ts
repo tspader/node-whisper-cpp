@@ -137,6 +137,8 @@ function cmake(): CMake.Builder {
 }
 
 namespace Native {
+  const CUDA_ARCHITECTURES = "75-virtual;80-virtual;86-real;89-real;120a-real";
+
   function cmakeFlags(os: Os) {
     const common = ["-DCMAKE_PLATFORM_NO_VERSIONED_SONAME=ON"];
     if (os !== "linux") {
@@ -180,6 +182,7 @@ namespace Native {
       .defineIf("CMAKE_C_COMPILER_LAUNCHER", "sccache",   () => !!options.ci)
       .defineIf("CMAKE_CXX_COMPILER_LAUNCHER", "sccache", () => !!options.ci)
       .defineIf("CMAKE_CUDA_COMPILER_LAUNCHER", "sccache", () => !!options.ci && target.backend === "cuda")
+      .defineIf("CMAKE_CUDA_ARCHITECTURES", CUDA_ARCHITECTURES, () => !!options.ci && target.backend === "cuda")
       .defines(cmakeFlags(target.os))
       .configure()
       .build()

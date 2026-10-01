@@ -49,7 +49,7 @@ jobs:
         with:
           triple: x64-linux-cuda-gnu
           backend: cuda
-          cuda: "12.6.3"
+          cuda: "13.0.3"
           smoke: "false"
 
   build-metal:

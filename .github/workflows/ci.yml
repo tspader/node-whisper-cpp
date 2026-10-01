@@ -27,7 +27,7 @@ jobs:
           - triple: x64-linux-cuda-gnu
             os: ubuntu-22.04
             backend: cuda
-            cuda: "12.6.3"
+            cuda: "13.0.3"
             smoke: false
           - triple: arm64-darwin-metal
             os: macos-26

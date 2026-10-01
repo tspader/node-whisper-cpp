@@ -130,7 +130,7 @@ async function main() {
     )
     .command(
       "install <cuda>",
-      "Install CUDA toolkit via apt (e.g. install 12.6.3)",
+      "Install CUDA toolkit via apt (e.g. install 13.0.3)",
       (cmd) =>
         cmd.positional("cuda", {
           type: "string",
