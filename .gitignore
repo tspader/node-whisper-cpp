@@ -26,3 +26,6 @@ test/.tmp/
 
 # example model (fetched on demand)
 asset/ggml-tiny.bin
+/infra/.terraform/
+*.tfstate
+*.tfstate.*
